@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Image, ScrollView } from 'react-native';
 
 import Icon from 'react-native-vector-icons/Feather';
@@ -35,6 +35,7 @@ interface Food {
   price: number;
   thumbnail_url: string;
   formattedPrice: string;
+  category: number;
 }
 
 interface Category {
@@ -55,11 +56,18 @@ const Dashboard: React.FC = () => {
 
   async function handleNavigate(id: number): Promise<void> {
     // Navigate do ProductDetails page
+    navigation.navigate('FoodDetails', { id })
   }
 
   useEffect(() => {
     async function loadFoods(): Promise<void> {
       // Load Foods from API
+      try {
+        const {data} = await api.get<Food[]>(`/foods?name_like=${searchValue}`)
+        setFoods(data)
+      } catch (err) {
+
+      }
     }
 
     loadFoods();
@@ -68,14 +76,29 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     async function loadCategories(): Promise<void> {
       // Load categories from API
+      try {
+        const {data} = await api.get<Category[]>('/categories')
+        setCategories(data)
+      } catch(err) {
+
+      }
     }
 
     loadCategories();
   }, []);
 
   function handleSelectCategory(id: number): void {
-    // Select / deselect category
+    setSelectedCategory(
+      id === selectedCategory ? undefined : id
+    )
   }
+
+  const shouldRenderFood = useCallback((category_id: number): boolean => {
+    if(selectedCategory) {
+      return category_id === selectedCategory
+    }
+    return true
+  }, [selectedCategory])
 
   return (
     <Container>
@@ -125,7 +148,7 @@ const Dashboard: React.FC = () => {
         <FoodsContainer>
           <Title>Pratos</Title>
           <FoodList>
-            {foods.map(food => (
+            {foods.map(food => shouldRenderFood(food.category) && (
               <Food
                 key={food.id}
                 onPress={() => handleNavigate(food.id)}
@@ -141,7 +164,7 @@ const Dashboard: React.FC = () => {
                 <FoodContent>
                   <FoodTitle>{food.name}</FoodTitle>
                   <FoodDescription>{food.description}</FoodDescription>
-                  <FoodPricing>{food.formattedPrice}</FoodPricing>
+                  <FoodPricing>{formatValue(food.price)}</FoodPricing>
                 </FoodContent>
               </Food>
             ))}
